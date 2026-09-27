@@ -144,8 +144,17 @@ def scatter_sum_to_nodes(edge_features, dst, num_nodes):
     return result
     pass
 
-# Step 7 - scatter_mean_to_nodes (not yet solved)
-# TODO: implement
+# Step 7 - scatter_mean_to_nodes
+def scatter_mean_to_nodes(edge_features, dst, num_nodes):
+    # TODO: Scatter-mean edge features onto destination nodes (sum then divide by in-degree).
+    degree=compute_node_degrees(dst,dst,num_nodes)
+    result=scatter_sum_to_nodes(edge_features,dst,num_nodes)
+    degree=degree.clamp(min=1.0)
+    degree=degree.unsqueeze(-1)
+    return result/degree
+   
+    
+    pass
 
 # Step 8 - scatter_max_to_nodes (not yet solved)
 # TODO: implement
