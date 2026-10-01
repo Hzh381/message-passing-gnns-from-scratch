@@ -275,8 +275,26 @@ def stack_message_passing_layers(node_features, src, dst, layers, edge_attr=None
     
     pass
 
-# Step 14 - gcn_renormalize_adjacency (not yet solved)
-# TODO: implement
+# Step 14 - gcn_renormalize_adjacency
+def gcn_renormalize_adjacency(src, dst, num_nodes):
+    """Apply Kipf-Welling renormalization: self-loops then symmetric norm.
+
+    Args:
+        src: LongTensor [E] source node indices.
+        dst: LongTensor [E] destination node indices.
+        num_nodes: int, number of nodes N.
+
+    Returns:
+        src_hat: LongTensor [E + N] sources after self-loops.
+        dst_hat: LongTensor [E + N] destinations after self-loops.
+        norm_weight: FloatTensor [E + N] symmetrically normalized weights.
+    """
+    # TODO: add self-loops then symmetrically normalize the adjacency...
+    src,dst=add_self_loops(src,dst,num_nodes)
+    norm_weight=symmetric_normalize_edge_weights(src,dst,num_nodes)
+    return src,dst,norm_weight
+    
+    pass
 
 # Step 15 - gcn_linear_transform (not yet solved)
 # TODO: implement
