@@ -440,8 +440,39 @@ def gat_attention_logits(node_features, src, dst, attn_src, attn_dst, weight):
     return logits,h
     pass
 
-# Step 20 - gat_masked_neighbor_softmax (not yet solved)
-# TODO: implement
+# Step 20 - gat_masked_neighbor_softmax
+def gat_masked_neighbor_softmax(logits, dst, num_nodes):
+    """Numerically stable softmax of attention logits over each dest node's neighbors.
+
+    Args:
+        logits: FloatTensor of shape (E,) with one unnormalized attention logit per edge.
+        dst: LongTensor of shape (E,) with destination node index for each edge.
+        num_nodes: int, number of nodes N in the graph.
+
+    Returns:
+        FloatTensor of shape (E,) with attention coefficients that sum to 1 over
+        each destination's incoming edges.
+    """
+    # TODO: Numerically stable softmax of attention logits over each dest node's neighbors
+    # 1. 把 (E,) 抬成 (E, 1)，好让 scatter 工具按节点维度处理
+    logits_2d = logits.unsqueeze(-1)                     # (E, 1)
+
+    # 2. 每个目标节点上的 max：m_j，形状 (N, 1)
+    max_per_node = scatter_max_to_nodes(logits_2d, dst, num_nodes)   # (N, 1)
+
+    # 3. 用 dst 把 m_j 广播回每条边，减去后做 exp
+    shifted = logits_2d - max_per_node[dst]              # (E, 1)
+    exp_shifted = torch.exp(shifted)                     # (E, 1)
+
+    # 4. 每个目标节点的分母 Z_j = sum_k exp(e_kj - m_j)，形状 (N, 1)
+    denom = scatter_sum_to_nodes(exp_shifted, dst, num_nodes)        # (N, 1)
+
+    # 5. 每条边除以自己目标节点的分母
+    alpha = exp_shifted / denom[dst]                     # (E, 1)
+
+    # 6. 拍回 (E,)
+    return alpha.squeeze(-1)
+    pass
 
 # Step 21 - gat_head_forward (not yet solved)
 # TODO: implement
