@@ -527,8 +527,46 @@ def merge_gat_heads(head_outputs, mode='concat'):
             return head_outputs.mean(dim=0)
     pass
 
-# Step 23 - gat_layer_forward (not yet solved)
-# TODO: implement
+# Step 23 - gat_layer_forward
+def gat_layer_forward(node_features, src, dst, head_params, merge_mode='concat', num_nodes=None, activation=None):
+    """Multi-head GAT layer: run each head, merge, optional activation.
+
+    Args:
+        node_features: FloatTensor (N, Fin).
+        src: LongTensor (E,) source indices.
+        dst: LongTensor (E,) destination indices.
+        head_params: list of dicts with keys weight, attn_src, attn_dst,
+            and optional bias for each head.
+        merge_mode: 'concat' or 'mean'.
+        num_nodes: optional int N; inferred from node_features if None.
+        activation: optional callable applied after merging heads.
+
+    Returns:
+        out: FloatTensor (N, F_merged).
+        all_attn: list of FloatTensor (E,) attention coeffs per head.
+    """
+    # TODO: run each head, merge outputs, apply optional nonlinearity...
+    all_attn=[]
+    head_out=[]
+    for params in head_params:
+        bias=params.get('bias',None)
+        head,coeffs=gat_head_forward(node_features,src,dst,params['weight'],params['attn_src'],params['attn_dst'],bias,num_nodes)
+        all_attn.append(coeffs)
+        head_out.append(head)
+
+    out=merge_gat_heads(head_out,merge_mode)
+    if activation is not None:
+        out =activation(out)
+
+    return out,all_attn
+
+    
+    
+    
+    
+    
+    
+    pass
 
 # Step 24 - init_gat_parameters (not yet solved)
 # TODO: implement
