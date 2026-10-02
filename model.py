@@ -762,8 +762,18 @@ def generate_sbm_graph(num_nodes, num_classes, p_in, p_out, feature_dim, seed=No
     
     pass
 
-# Step 33 - build_node_classification_dataset (not yet solved)
-# TODO: implement
+# Step 33 - build_node_classification_dataset
+def build_node_classification_dataset(num_graphs, num_nodes, num_classes, p_in, p_out, feature_dim, seed=None):
+    # TODO: Build a list of SBM graphs with consistent schema for node classification.
+    ds=[]
+    if seed is not None:
+        torch.manual_seed(seed)
+    for i in range(num_graphs):
+        graph=generate_sbm_graph(num_nodes,num_classes,p_in,p_out,feature_dim,seed=None if seed is None else seed+i )
+    
+        ds.append(graph)
+    return ds
+    pass
 
 # Step 34 - generate_molecule_like_graph (not yet solved)
 # TODO: implement
