@@ -717,8 +717,16 @@ def node_classification_head(node_embeddings, weight, bias=None):
    
     pass
 
-# Step 31 - graph_regression_head (not yet solved)
-# TODO: implement
+# Step 31 - graph_regression_head
+def graph_regression_head(graph_embeddings, weight, bias=None):
+    # TODO: Map pooled graph embeddings to regression predictions via a linear head.
+    
+    result=torch.matmul(graph_embeddings,weight.T)
+    if bias is None:
+        return result
+    return result+bias
+   
+    pass
 
 # Step 32 - generate_sbm_graph (not yet solved)
 # TODO: implement
