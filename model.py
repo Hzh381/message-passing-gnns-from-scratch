@@ -728,8 +728,39 @@ def graph_regression_head(graph_embeddings, weight, bias=None):
    
     pass
 
-# Step 32 - generate_sbm_graph (not yet solved)
-# TODO: implement
+# Step 32 - generate_sbm_graph
+def generate_sbm_graph(num_nodes, num_classes, p_in, p_out, feature_dim, seed=None):
+    # TODO: Sample one SBM graph with community labels and random node features.
+    if seed is not None:
+        torch.manual_seed(seed)
+    node_labels=torch.zeros(num_nodes,dtype=torch.long)
+    for c in range(num_classes):
+        start= c*num_nodes//num_classes
+        end=(c+1)*num_nodes//num_classes
+        node_labels[start:end]=c
+    node_features=torch.randn(num_nodes,feature_dim)
+    src=[]
+    dst=[]
+    for i in range(num_nodes):
+        for j in range(num_nodes):
+            if i<j:
+                if node_labels[i]==node_labels[j]:
+                    if torch.rand(1).item()<p_in:
+                        src.append(i)
+                        dst.append(j)
+                        src.append(j)
+                        dst.append(i)
+                else:
+                     if torch.rand(1).item()<p_out:
+                        src.append(i)
+                        dst.append(j)
+                        src.append(j)
+                        dst.append(i)
+    edge_index=torch.tensor([src,dst],dtype=torch.long)
+
+    return {'node_features':node_features,'edge_index':edge_index,'node_labels':node_labels,'num_nodes':num_nodes}
+    
+    pass
 
 # Step 33 - build_node_classification_dataset (not yet solved)
 # TODO: implement
