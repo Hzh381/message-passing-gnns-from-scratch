@@ -1045,8 +1045,34 @@ def train_graph_regressor(params, graphs, forward_fn, num_epochs, lr,
 
     return history, params
 
-# Step 44 - representation_similarity (not yet solved)
-# TODO: implement
+# Step 44 - representation_similarity
+def representation_similarity(features_a, features_b):
+    # TODO: Return mean cosine similarity of corresponding rows (eps=1e-8)...
+    """
+    计算两个节点特征矩阵逐行的平均余弦相似度。
+
+    参数:
+        features_a: FloatTensor (N, D)
+        features_b: FloatTensor (N, D)
+        eps: 稳定性 epsilon，防止除零
+
+    返回:
+        float: 平均余弦相似度，范围 [-1, 1]
+    """
+    eps=1e-8
+    # 1) 每行的 L2 范数，keepdim=True 保持 (N, 1) 便于广播
+    norm_a = features_a.norm(dim=1, keepdim=True)      # (N, 1)
+    norm_b = features_b.norm(dim=1, keepdim=True)      # (N, 1)
+
+    # 2) L2 归一化（加 eps 防止全零行除零）
+    a_unit = features_a / (norm_a + eps)               # (N, D)
+    b_unit = features_b / (norm_b + eps)               # (N, D)
+
+    # 3) 逐元素相乘，沿特征维求和 → 每行的点积 = 余弦
+    cos_per_node = (a_unit * b_unit).sum(dim=1)        # (N,)
+
+    # 4) 对节点取均值，转 Python float
+    return cos_per_node.mean().item()
 
 # Step 45 - oversmoothing_diagnostic (not yet solved)
 # TODO: implement
