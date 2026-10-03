@@ -901,8 +901,46 @@ def mae_metric(predictions, targets):
     
     pass
 
-# Step 41 - gnn_train_step (not yet solved)
-# TODO: implement
+# Step 41 - gnn_train_step
+def gnn_train_step(params, batch, forward_fn, loss_fn, lr):
+    # TODO: Run one SGD training step and update params in-place...
+    """
+    执行单次 SGD 训练步骤。
+
+    参数:
+        params: dict[str, Tensor]，每个张量 requires_grad=True
+        batch: dict，目标值在 batch['y']
+        forward_fn: callable(params, batch) -> predictions
+        loss_fn: callable(predictions, targets) -> scalar
+        lr: 学习率
+
+    返回:
+        dict: {'loss': float, 'params': params}
+    """
+    # 1) 清零旧梯度，防止跨步累积
+    for p in params.values():
+        if p.grad is not None:
+            p.grad.zero_()
+        # 也可以直接 p.grad = None
+
+    # 2) 前向传播
+    predictions = forward_fn(params, batch)
+
+    # 3) 计算损失（目标值来自 batch['y']）
+    targets = batch['y']
+    loss = loss_fn(predictions, targets)
+
+    # 4) 反向传播
+    loss.backward()
+
+    # 5) 原地 SGD 更新参数
+    with torch.no_grad():
+        for p in params.values():
+            if p.grad is not None:
+                p -= lr * p.grad       # 原地更新，保持对象身份
+
+    # 6) 返回结果
+    return {'loss': float(loss.item()), 'params': params}
 
 # Step 42 - train_node_classifier (not yet solved)
 # TODO: implement
