@@ -871,8 +871,15 @@ def cross_entropy_loss(logits, targets):
     
     pass
 
-# Step 38 - mse_loss (not yet solved)
-# TODO: implement
+# Step 38 - mse_loss
+def mse_loss(predictions, targets):
+    # TODO: Compute mean squared error between predictions and targets
+    predictions=predictions.view(-1)
+    targets=targets.view(-1)
+    return ((predictions-targets)**2).mean()
+    
+    
+    pass
 
 # Step 39 - accuracy_metric (not yet solved)
 # TODO: implement
