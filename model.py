@@ -849,8 +849,27 @@ def collate_graph_batch(graphs):
     
     pass
 
-# Step 37 - cross_entropy_loss (not yet solved)
-# TODO: implement
+# Step 37 - cross_entropy_loss
+def cross_entropy_loss(logits, targets):
+    # TODO: Compute mean multi-class cross-entropy between logits and targets.
+     # logits: (M, C) 未归一化分数
+    # targets: (M,) 长整型类别索引
+    M = logits.shape[0]
+
+    # 1) 沿类别维 (dim=-1) 做 log-softmax
+    log_probs = torch.log_softmax(logits, dim=-1)   # (M, C)
+
+    # 2) 取出每个样本真实类别的对数概率
+    #    log_probs[i, targets[i]] for all i
+    true_log_probs = log_probs[torch.arange(M), targets]   # (M,)
+
+    # 3) 取负、取均值
+    loss = -true_log_probs.mean()   # 0-dim 张量
+
+    return loss
+    
+    
+    pass
 
 # Step 38 - mse_loss (not yet solved)
 # TODO: implement
