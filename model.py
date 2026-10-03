@@ -1095,6 +1095,134 @@ def oversmoothing_diagnostic(layer_features):
         'mean_similarity': mean_similarity
     }
 
-# Step 46 - mpnn_gnn_experiment (not yet solved)
-# TODO: implement
+# Step 46 - mpnn_gnn_experiment
+def mpnn_gnn_experiment(num_nodes=40, num_features=8, num_classes=2, num_layers=3, hidden_dim=16, num_epochs=20, lr=0.01, seed=0):
+    # TODO: Run an end-to-end GCN-vs-GAT node-classification comparison on one SBM graph.
+    """在单个合成 SBM 图上运行 GCN vs GAT 节点分类对比。"""
+
+
+    # ---------- 1) 构建 SBM 图 ----------
+    graphs = build_node_classification_dataset(
+        1, num_nodes, num_classes, 0.5, 0.1, num_features, seed=seed
+    )
+    g = graphs[0]
+    x = g['node_features']
+    edge_index = g['edge_index']
+    y = g['node_labels']
+    src, dst = edge_index[0], edge_index[1]
+
+    # ---------- 2) train_mask ----------
+    torch.manual_seed(seed)
+    perm = torch.randperm(num_nodes)
+    train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+    train_mask[perm[: num_nodes // 2]] = True
+
+    dataset = {'x': x, 'edge_index': edge_index, 'y': y, 'train_mask': train_mask}
+
+    N, E, C = num_nodes, int(edge_index.shape[1]), num_classes
+
+    # ================= GCN =================
+    gcn_params = {}
+    for i in range(num_layers):
+        in_dim = num_features if i == 0 else hidden_dim
+        lp = init_gcn_parameters(in_dim, hidden_dim, with_bias=True,
+                                 seed=seed + 10 + i)
+        gcn_params[f'l{i}_weight'] = lp['weight'].requires_grad_(True)
+        gcn_params[f'l{i}_bias'] = lp['bias'].requires_grad_(True)
+
+    hp = init_gcn_parameters(hidden_dim, num_classes, with_bias=True,
+                             seed=seed + 50)
+    gcn_params['head_weight'] = hp['weight'].requires_grad_(True)
+    gcn_params['head_bias'] = hp['bias'].requires_grad_(True)
+
+    def gcn_forward(params, x_in, edge_index_in):
+        param_list = [
+            {'weight': params[f'l{i}_weight'], 'bias': params[f'l{i}_bias']}
+            for i in range(num_layers)
+        ]
+        emb, _ = gcn_stack_forward(
+            x_in, edge_index_in[0], edge_index_in[1], param_list,
+            activations=[torch.relu] * num_layers,
+        )
+        return node_classification_head(emb, params['head_weight'],
+                                        params['head_bias'])
+
+    gcn_result = train_node_classifier(gcn_params, dataset, gcn_forward,
+                                       num_epochs, lr)
+    gcn_params = gcn_result['params']
+
+    with torch.no_grad():
+        param_list = [
+            {'weight': gcn_params[f'l{i}_weight'], 'bias': gcn_params[f'l{i}_bias']}
+            for i in range(num_layers)
+        ]
+        _, gcn_layer_outputs = gcn_stack_forward(
+            x, src, dst, param_list, activations=[torch.relu] * num_layers,
+        )
+    gcn_over = oversmoothing_diagnostic(gcn_layer_outputs)
+
+    # ================= GAT (单头, concat) =================
+    gat_params = {}
+    for i in range(num_layers):
+        in_dim = num_features if i == 0 else hidden_dim
+        heads = init_gat_parameters(in_dim, hidden_dim, num_heads=1,
+                                    with_bias=True, seed=seed + 100 + i)
+        h0 = heads[0]
+        gat_params[f'l{i}_h0_weight'] = h0['weight'].requires_grad_(True)
+        gat_params[f'l{i}_h0_attn_src'] = h0['attn_src'].requires_grad_(True)
+        gat_params[f'l{i}_h0_attn_dst'] = h0['attn_dst'].requires_grad_(True)
+        if 'bias' in h0:
+            gat_params[f'l{i}_h0_bias'] = h0['bias'].requires_grad_(True)
+
+    hp = init_gcn_parameters(hidden_dim, num_classes, with_bias=True,
+                             seed=seed + 150)
+    gat_params['head_weight'] = hp['weight'].requires_grad_(True)
+    gat_params['head_bias'] = hp['bias'].requires_grad_(True)
+
+    def gat_forward(params, x_in, edge_index_in):
+        layer_param_list = []
+        for i in range(num_layers):
+            head = {
+                'weight': params[f'l{i}_h0_weight'],
+                'attn_src': params[f'l{i}_h0_attn_src'],
+                'attn_dst': params[f'l{i}_h0_attn_dst'],
+            }
+            if f'l{i}_h0_bias' in params:
+                head['bias'] = params[f'l{i}_h0_bias']
+            layer_param_list.append([head])
+        emb, _ = gat_stack_forward(
+            x_in, edge_index_in[0], edge_index_in[1], layer_param_list,
+            merge_modes=['concat'] * num_layers,
+            activations=[torch.relu] * num_layers,
+        )
+        return node_classification_head(emb, params['head_weight'],
+                                        params['head_bias'])
+
+    gat_result = train_node_classifier(gat_params, dataset, gat_forward,
+                                       num_epochs, lr)
+    gat_params = gat_result['params']
+
+    with torch.no_grad():
+        layer_param_list = []
+        for i in range(num_layers):
+            head = {
+                'weight': gat_params[f'l{i}_h0_weight'],
+                'attn_src': gat_params[f'l{i}_h0_attn_src'],
+                'attn_dst': gat_params[f'l{i}_h0_attn_dst'],
+            }
+            if f'l{i}_h0_bias' in gat_params:
+                head['bias'] = gat_params[f'l{i}_h0_bias']
+            layer_param_list.append([head])
+        _, gat_layer_outputs = gat_stack_forward(
+            x, src, dst, layer_param_list,
+            merge_modes=['concat'] * num_layers,
+            activations=[torch.relu] * num_layers,
+        )
+    gat_over = oversmoothing_diagnostic(gat_layer_outputs)
+
+    return {
+        'gcn': {'history': gcn_result['history'], 'oversmoothing': gcn_over},
+        'gat': {'history': gat_result['history'], 'oversmoothing': gat_over},
+        'dataset_sizes': {'N': int(N), 'E': int(E), 'C': int(C)},
+    }
 
