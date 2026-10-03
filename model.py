@@ -983,8 +983,67 @@ def train_node_classifier(params, dataset, forward_fn, num_epochs, lr, mask_key=
 
     return {'history': history, 'params': params}
 
-# Step 43 - train_graph_regressor (not yet solved)
-# TODO: implement
+# Step 43 - train_graph_regressor
+def train_graph_regressor(params, graphs, forward_fn, num_epochs, lr,
+                          batch_size=8, shuffle=True):
+    """
+    对图级回归示例列表进行多轮小批量训练。
+
+    参数:
+        params: dict[str, Tensor]，可训练参数
+        graphs: list[dict]，每个 dict 含 'x'、'edge_index'、'y'
+        forward_fn: callable(params, batch) -> predictions (B,)
+        num_epochs: int
+        lr: float 学习率
+        batch_size: int，默认 8
+        shuffle: 是否每个 epoch 打乱顺序
+
+    返回:
+        (history, params)
+        history = {'loss': [float]*num_epochs, 'mae': [float]*num_epochs}
+    """
+    n = len(graphs)
+    history = {'loss': [], 'mae': []}
+
+    for epoch in range(num_epochs):
+        total_loss = 0.0
+        n_batches = 0
+
+        # 1) 每个 epoch 可选打乱索引
+        if shuffle:
+            order = torch.randperm(n).tolist()
+        else:
+            order = list(range(n))
+
+        # 2) 小批量训练
+        for start in range(0, n, batch_size):
+            idx = order[start:start + batch_size]
+            batch_graphs = [graphs[i] for i in idx]
+
+            batch = collate_graph_batch(batch_graphs)
+
+            result = gnn_train_step(
+                params, batch, forward_fn, mse_loss, lr
+            )
+
+            total_loss += result['loss']
+            params = result['params']
+            n_batches += 1
+
+        # 3) 本 epoch 平均训练损失
+        epoch_loss = total_loss / max(n_batches, 1)
+
+        # 4) 在整个数据集上评估 MAE（无梯度）
+        with torch.no_grad():
+            full_batch = collate_graph_batch(graphs)
+            preds = forward_fn(params, full_batch)
+            mae = mae_metric(preds, full_batch['y'])
+
+        # 5) 记录
+        history['loss'].append(float(epoch_loss))
+        history['mae'].append(float(mae))
+
+    return history, params
 
 # Step 44 - representation_similarity (not yet solved)
 # TODO: implement
