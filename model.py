@@ -1074,8 +1074,26 @@ def representation_similarity(features_a, features_b):
     # 4) 对节点取均值，转 Python float
     return cos_per_node.mean().item()
 
-# Step 45 - oversmoothing_diagnostic (not yet solved)
-# TODO: implement
+# Step 45 - oversmoothing_diagnostic
+def oversmoothing_diagnostic(layer_features):
+    # TODO: Diagnose oversmoothing via consecutive-layer representation similarities.
+    pairwise_similarities = []
+
+    # 遍历所有相邻层对
+    for i in range(len(layer_features) - 1):
+        sim = representation_similarity(layer_features[i], layer_features[i + 1])
+        pairwise_similarities.append(float(sim))
+
+    # 计算均值；若无相邻对，则为 0.0
+    if pairwise_similarities:
+        mean_similarity = sum(pairwise_similarities) / len(pairwise_similarities)
+    else:
+        mean_similarity = 0.0
+
+    return {
+        'pairwise_similarities': pairwise_similarities,
+        'mean_similarity': mean_similarity
+    }
 
 # Step 46 - mpnn_gnn_experiment (not yet solved)
 # TODO: implement
